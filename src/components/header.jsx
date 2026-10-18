@@ -8,8 +8,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {logout} from "@/db/apiAuth";
 import useFetch from "@/hooks/use-fetch";
-import {Avatar, AvatarFallback, AvatarImage} from "@radix-ui/react-avatar";
-import {LinkIcon, LogOut} from "lucide-react";
+import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
+import {Home, LinkIcon, LogOut} from "lucide-react";
 import {Link, useNavigate} from "react-router-dom";
 import {BarLoader} from "react-spinners";
 import {Button} from "./ui/button";
@@ -20,6 +20,14 @@ const Header = () => {
   const navigate = useNavigate();
 
   const {user, fetchUser} = UrlState();
+
+  const userInitials =
+    user?.user_metadata?.name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "U";
 
   return (
     <>
@@ -32,23 +40,33 @@ const Header = () => {
             <Button onClick={() => navigate("/auth")}>Login</Button>
           ) : (
             <DropdownMenu>
-              <DropdownMenuTrigger className="w-10 rounded-full overflow-hidden">
-                <Avatar>
-                  <AvatarImage src={user?.user_metadata?.profile_pic} />
-                  <AvatarFallback>PA</AvatarFallback>
+              <DropdownMenuTrigger className="w-10 h-10 rounded-full overflow-hidden focus:outline-none ring-2 ring-primary/20 hover:ring-primary/50 transition-all shrink-0">
+                <Avatar className="w-10 h-10 rounded-full overflow-hidden">
+                  <AvatarImage
+                    src={user?.user_metadata?.profile_pic}
+                    className="object-cover w-full h-full"
+                  />
+                  <AvatarFallback>{userInitials}</AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuLabel>
-                  {user?.user_metadata?.name}
+                  {user?.user_metadata?.name || "My Account"}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <Link to="/dashboard" className="flex">
-                    <LinkIcon className="mr-2 h-4 w-4" />
-                    My Links
+                <DropdownMenuItem asChild>
+                  <Link to="/" className="flex items-center cursor-pointer w-full">
+                    <Home className="mr-2 h-4 w-4" />
+                    <span>Home</span>
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard" className="flex items-center cursor-pointer w-full">
+                    <LinkIcon className="mr-2 h-4 w-4" />
+                    <span>My Links</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => {
                     fnLogout().then(() => {
@@ -56,7 +74,7 @@ const Header = () => {
                       navigate("/auth");
                     });
                   }}
-                  className="text-red-400"
+                  className="text-red-400 cursor-pointer"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Logout</span>
