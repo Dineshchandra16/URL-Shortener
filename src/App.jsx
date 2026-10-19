@@ -1,6 +1,7 @@
 import "./App.css";
 import {RouterProvider, createBrowserRouter} from "react-router-dom";
 import UrlProvider from "./context";
+import {ThemeProvider} from "./theme-context";
 
 import AppLayout from "./layouts/app-layout";
 import RequireAuth from "./components/require-auth";
@@ -49,9 +50,11 @@ const router = createBrowserRouter([
 
 function App() {
   return (
-    <UrlProvider>
-      <RouterProvider router={router} />
-    </UrlProvider>
+    <ThemeProvider defaultTheme="dark" storageKey="trimrr-ui-theme">
+      <UrlProvider>
+        <RouterProvider router={router} />
+      </UrlProvider>
+    </ThemeProvider>
   );
 }
 
