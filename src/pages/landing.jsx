@@ -39,8 +39,8 @@ const LandingPage = () => {
         </Button>
       </form>
       <img
-        src="/banner1.png"
-        className="w-full my-11 md:px-11 rounded-2xl"
+        src="/banner1.jpg"
+        className="w-full my-11 md:px-11"
         alt="Trimrr Banner"
       />
       <Accordion type="multiple" collapsible className="w-full md:px-11">
