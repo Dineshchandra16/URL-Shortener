@@ -23,3 +23,4 @@ export function ThemeToggle({ className = "" }) {
 }
 
 export default ThemeToggle;
+

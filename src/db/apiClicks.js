@@ -12,6 +12,22 @@ import supabase from "./supabase";
 //   return data;
 // }
 
+export async function getClicksCountForUrls(urlIds) {
+  if (!urlIds || urlIds.length === 0) return 0;
+
+  const {count, error} = await supabase
+    .from("clicks")
+    .select("*", {count: "exact", head: true})
+    .in("url_id", urlIds);
+
+  if (error) {
+    console.error("Error fetching clicks count:", error);
+    return 0;
+  }
+
+  return count ?? 0;
+}
+
 export async function getClicksForUrls(urlIds) {
   const {data, error} = await supabase
     .from("clicks")

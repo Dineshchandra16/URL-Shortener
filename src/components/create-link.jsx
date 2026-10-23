@@ -21,6 +21,25 @@ import {UrlState} from "@/context";
 import {QRCode} from "react-qrcode-logo";
 import {Plus, Link2, Sparkles, Type, Globe} from "lucide-react";
 
+const RESERVED_SLUGS = new Set([
+  "auth",
+  "dashboard",
+  "link",
+  "api",
+  "admin",
+  "login",
+  "signup",
+  "settings",
+  "profile",
+  "about",
+  "pricing",
+  "public",
+  "assets",
+  "favicon",
+  "robots",
+  "sitemap",
+]);
+
 export function CreateLink() {
   const {user} = UrlState();
   const navigate = useNavigate();
@@ -29,6 +48,10 @@ export function CreateLink() {
   const [searchParams, setSearchParams] = useSearchParams();
   const longLink = searchParams.get("createNew");
 
+  const [defaultSlug, setDefaultSlug] = useState(() =>
+    Math.random().toString(36).substr(2, 6)
+  );
+
   const [errors, setErrors] = useState({});
   const [formValues, setFormValues] = useState({
     title: "",
@@ -36,13 +59,40 @@ export function CreateLink() {
     customUrl: "",
   });
 
+  const activeSlug = formValues.customUrl?.trim() || defaultSlug;
+  const targetShortUrl = `${window.location.origin}/${activeSlug}`;
+
   const schema = yup.object().shape({
-    title: yup.string().required("Title is required"),
+    title: yup.string().trim().required("Title is required"),
     longUrl: yup
       .string()
-      .url("Must be a valid URL (including https://)")
-      .required("Long URL is required"),
-    customUrl: yup.string().matches(/^[a-zA-Z0-9-_]*$/, "Custom alias can only contain letters, numbers, hyphens, and underscores"),
+      .trim()
+      .required("Destination URL is required")
+      .matches(/^https?:\/\/.+/i, "URL must start with http:// or https://")
+      .test("is-valid-url", "Must be a valid web address", (value) => {
+        if (!value) return false;
+        try {
+          const parsed = new URL(value);
+          return parsed.protocol === "http:" || parsed.protocol === "https:";
+        } catch {
+          return false;
+        }
+      }),
+    customUrl: yup
+      .string()
+      .trim()
+      .matches(
+        /^[a-zA-Z0-9-_]*$/,
+        "Custom alias can only contain letters, numbers, hyphens, and underscores"
+      )
+      .test(
+        "not-reserved",
+        "This alias is reserved by the system. Please choose another.",
+        (value) => {
+          if (!value) return true;
+          return !RESERVED_SLUGS.has(value.toLowerCase().trim());
+        }
+      ),
   });
 
   const handleChange = (e) => {
@@ -60,7 +110,11 @@ export function CreateLink() {
     error,
     data,
     fn: fnCreateUrl,
-  } = useFetch(createUrl, {...formValues, user_id: user.id});
+  } = useFetch(createUrl, {
+    ...formValues,
+    short_url: defaultSlug,
+    user_id: user?.id,
+  });
 
   useEffect(() => {
     if (error === null && data) {
@@ -81,7 +135,11 @@ export function CreateLink() {
       }
       const blob = await new Promise((resolve) => canvas.toBlob(resolve));
 
-      await fnCreateUrl(blob);
+      await fnCreateUrl(blob, {
+        ...formValues,
+        short_url: defaultSlug,
+        user_id: user?.id,
+      });
     } catch (e) {
       const newErrors = {};
       if (e?.inner) {
@@ -99,7 +157,10 @@ export function CreateLink() {
     <Dialog
       defaultOpen={Boolean(longLink)}
       onOpenChange={(res) => {
-        if (!res) setSearchParams({});
+        if (!res) {
+          setSearchParams({});
+          setDefaultSlug(Math.random().toString(36).substr(2, 6));
+        }
       }}
     >
       <DialogTrigger asChild>
@@ -127,12 +188,12 @@ export function CreateLink() {
                 <QRCode
                   ref={ref}
                   size={160}
-                  value={formValues.longUrl}
+                  value={targetShortUrl}
                   quietZone={5}
                 />
               </div>
-              <p className="text-[11px] text-muted-foreground mt-2 font-medium">
-                Live QR Code Preview
+              <p className="text-[11px] text-muted-foreground mt-2 font-mono truncate max-w-full text-center">
+                Scans to: <span className="text-primary font-semibold">{targetShortUrl}</span>
               </p>
             </div>
           )}

@@ -45,8 +45,15 @@ export async function getLongUrl(id) {
   return shortLinkData;
 }
 
-export async function createUrl({title, longUrl, customUrl, user_id}, qrcode) {
-  const short_url = Math.random().toString(36).substr(2, 6);
+export async function createUrl(options, qrcode, extraData = {}) {
+  const title = extraData.title || options.title;
+  const longUrl = extraData.longUrl || options.longUrl;
+  const customUrl = (extraData.customUrl || options.customUrl || "").trim() || null;
+  const user_id = extraData.user_id || options.user_id;
+  const short_url =
+    extraData.short_url ||
+    options.short_url ||
+    Math.random().toString(36).substr(2, 6);
   const fileName = `qr-${short_url}`;
 
   const {error: storageError} = await supabase.storage
@@ -72,8 +79,13 @@ export async function createUrl({title, longUrl, customUrl, user_id}, qrcode) {
     .select();
 
   if (error) {
-    console.error(error);
-    throw new Error("Error creating short URL");
+    console.error("Database insert error:", error);
+    if (error.code === "23505") {
+      throw new Error(
+        "This custom alias or short URL is already taken. Please choose another."
+      );
+    }
+    throw new Error(error.message || "Error creating short URL");
   }
 
   return data;

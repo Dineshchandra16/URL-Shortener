@@ -11,7 +11,7 @@ import Error from "@/components/error";
 
 import useFetch from "@/hooks/use-fetch";
 import {getUrls} from "@/db/apiUrls";
-import {getClicksForUrls} from "@/db/apiClicks";
+import {getClicksCountForUrls} from "@/db/apiClicks";
 import {UrlState} from "@/context";
 
 const Dashboard = () => {
@@ -20,10 +20,10 @@ const Dashboard = () => {
   const {loading, error, data: urls, fn: fnUrls} = useFetch(getUrls, user.id);
   const {
     loading: loadingClicks,
-    data: clicks,
+    data: totalClicks,
     fn: fnClicks,
   } = useFetch(
-    getClicksForUrls,
+    getClicksCountForUrls,
     urls?.map((url) => url.id)
   );
 
@@ -77,7 +77,7 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-extrabold text-foreground">
-              {clicks ? clicks.length : 0}
+              {typeof totalClicks === "number" ? totalClicks : 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Cumulative clicks tracked across all links
