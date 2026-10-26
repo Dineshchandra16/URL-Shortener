@@ -5,12 +5,9 @@ const parser = new UAParser();
 
 export function parseVisitor(req) {
   // Extract client IP address (supporting proxies, Cloudflare, load balancers)
-  const forwarded = req.headers["x-forwarded-for"];
-  const rawIp = forwarded
-    ? forwarded.split(",")[0].trim()
-    : req.socket?.remoteAddress || req.ip || "";
-  // Normalize IPv6 mapped IPv4 addresses (e.g., ::ffff:127.0.0.1)
-  const ip = rawIp.replace(/^.*:/, "");
+  const rawIp = req.ip || req.socket?.remoteAddress || "";
+  // Express only trusts forwarded addresses when trust proxy is configured.
+  const ip = rawIp.replace(/^::ffff:/i, "");
 
   // Offline in-memory GeoIP lookup (0ms network delay, not blocked by ad-blockers)
   let city = "Unknown";

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import process from "node:process";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";

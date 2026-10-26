@@ -1,11 +1,15 @@
 import { Router } from "express";
+import { createHash } from "node:crypto";
+import { isbot } from "isbot";
 import { supabase } from "../lib/supabase.js";
 import { parseVisitor } from "../lib/geo.js";
+import { cacheLink, claimClickDeduplication, getCachedLink } from "../lib/redis.js";
+import { redirectRateLimit } from "../middleware/rateLimiter.js";
 
 const router = Router();
 
 // Fast HTTP 302 Redirect Endpoint
-router.get("/:slug", async (req, res) => {
+router.get("/:slug", redirectRateLimit, async (req, res) => {
   const { slug } = req.params;
 
   // Ignore static browser requests
@@ -14,14 +18,24 @@ router.get("/:slug", async (req, res) => {
   }
 
   try {
-    // 1. Resolve destination URL from Supabase
-    const { data: url, error } = await supabase
-      .from("urls")
-      .select("id, original_url")
-      .or(`short_url.eq.${slug},custom_url.eq.${slug}`)
-      .single();
+    // 1. Resolve from Redis first, falling back to Supabase on a miss.
+    let url = await getCachedLink(slug);
+    if (!url) {
+      const { data, error } = await supabase
+        .from("urls")
+        .select("id, original_url, short_url, custom_url")
+        .or(`short_url.eq.${slug},custom_url.eq.${slug}`)
+        .single();
+      if (!error && data) {
+        url = { id: data.id, original_url: data.original_url };
+        await Promise.all([
+          cacheLink(data.short_url, url),
+          data.custom_url ? cacheLink(data.custom_url, url) : Promise.resolve(),
+        ]);
+      }
+    }
 
-    if (error || !url) {
+    if (!url) {
       return res.status(404).send(`
         <!DOCTYPE html>
         <html lang="en">
@@ -61,23 +75,25 @@ router.get("/:slug", async (req, res) => {
     // The browser redirects immediately without downloading HTML or React!
     res.redirect(302, target);
 
-    // 4. ASYNCHRONOUS BACKGROUND CLICK LOGGING
-    // Runs after the redirect header is sent so it does NOT delay the user!
-    try {
-      const { city, country, device } = parseVisitor(req);
+    // Preview crawlers should get the destination but must not pollute analytics.
+    const userAgent = req.headers["user-agent"] || "";
+    if (!isbot(userAgent)) {
+      const { ip, city, country, device } = parseVisitor(req);
+      const ipHash = createHash("sha256").update(ip || "unknown").digest("hex");
+      const firstClick = await claimClickDeduplication(url.id, ipHash);
 
-      await supabase.from("clicks").insert({
-        url_id: url.id,
-        city,
-        country,
-        device,
-      });
-    } catch (logErr) {
-      console.error("Background click logging error:", logErr.message);
+      // Redis failure permits logging, preserving analytics availability.
+      if (firstClick !== false) {
+        supabase.from("clicks").insert({ url_id: url.id, city, country, device })
+          .then(({ error: logError }) => {
+            if (logError) console.error("Background click logging error:", logError.message);
+          })
+          .catch((logErr) => console.error("Background click logging error:", logErr.message));
+      }
     }
   } catch (err) {
     console.error("Redirect server error:", err);
-    res.status(500).send("Internal Server Error");
+    if (!res.headersSent) res.status(500).send("Internal Server Error");
   }
 });
 

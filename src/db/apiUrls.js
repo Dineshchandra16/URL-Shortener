@@ -64,40 +64,43 @@ export async function createUrl(options, qrcode, extraData = {}) {
 
   const qr = `${supabaseUrl}/storage/v1/object/public/qrs/${fileName}`;
 
-  const {data, error} = await supabase
-    .from("urls")
-    .insert([
-      {
-        title,
-        user_id,
-        original_url: longUrl,
-        custom_url: customUrl || null,
-        short_url,
-        qr,
-      },
-    ])
-    .select();
-
-  if (error) {
-    console.error("Database insert error:", error);
-    if (error.code === "23505") {
-      throw new Error(
-        "This custom alias or short URL is already taken. Please choose another."
-      );
+  const {data: {session}} = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error("Please sign in again to create a short URL.");
+  const response = await fetch("/api/urls", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({
+      title,
+      user_id,
+      original_url: longUrl,
+      custom_url: customUrl,
+      short_url,
+      qr,
+    }),
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    if (response.status === 409) {
+      throw new Error("This custom alias or short URL is already taken. Please choose another.");
     }
-    throw new Error(error.message || "Error creating short URL");
+    throw new Error(result.error || "Error creating short URL");
   }
-
-  return data;
+  return result;
 }
 
 export async function deleteUrl(id) {
-  const {data, error} = await supabase.from("urls").delete().eq("id", id);
-
-  if (error) {
-    console.error(error);
-    throw new Error("Unable to delete Url");
+  const {data: {session}} = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error("Please sign in again to delete this URL.");
+  const response = await fetch(`/api/urls/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({}));
+    throw new Error(result.error || "Unable to delete URL");
   }
-
-  return data;
+  return true;
 }

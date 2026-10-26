@@ -1,9 +1,11 @@
 import express from "express";
+import process from "node:process";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import redirectRoutes from "./routes/redirect.js";
+import urlRoutes from "./routes/urls.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,6 +19,7 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.set("trust proxy", process.env.TRUST_PROXY || false);
 
 // Health check endpoint
 app.get("/healthz", (req, res) => {
@@ -29,6 +32,7 @@ app.get("/healthz", (req, res) => {
 
 // Fast Redirect Route mounted at /r/:slug
 app.use("/r", redirectRoutes);
+app.use("/api/urls", urlRoutes);
 
 // Serve frontend static build if built (Production Mode)
 const distPath = path.resolve(__dirname, "../dist");
