@@ -12,7 +12,7 @@ function RequireAuth({children}) {
 
   useEffect(() => {
     if (!isAuthenticated && loading === false) navigate("/auth");
-  }, [isAuthenticated, loading]);
+  }, [isAuthenticated, loading, navigate]);
 
   if (loading) return <BarLoader width={"100%"} color="#2563EB" />;
 

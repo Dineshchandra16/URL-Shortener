@@ -19,16 +19,13 @@ const RedirectLink = () => {
 
   useEffect(() => {
     fn();
-  }, []);
+  }, [fn, id]);
 
   useEffect(() => {
-    if (!loading && data) {
-      fnStats();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, data]);
+    if (loading === false && data) fnStats();
+  }, [loading, data, fnStats]);
 
-  if (loading || loadingStats) {
+  if (loading !== false || (data && loadingStats !== false)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-4">
         <div className="w-full max-w-md space-y-4">
@@ -47,7 +44,7 @@ const RedirectLink = () => {
     );
   }
 
-  if (!loading && !data) {
+  if (loading === false && !data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-4">
         <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">

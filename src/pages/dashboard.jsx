@@ -1,6 +1,6 @@
-import {useEffect, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import {BarLoader} from "react-spinners";
-import {Search, X, Link2, MousePointerClick, Plus, Sparkles} from "lucide-react";
+import {Search, X, Link2, MousePointerClick} from "lucide-react";
 
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Input} from "@/components/ui/input";
@@ -18,26 +18,24 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const {user} = UrlState();
   const {loading, error, data: urls, fn: fnUrls} = useFetch(getUrls, user.id);
+  const urlIds = useMemo(() => urls?.map((url) => url.id), [urls]);
   const {
     loading: loadingClicks,
     data: totalClicks,
     fn: fnClicks,
-  } = useFetch(
-    getClicksCountForUrls,
-    urls?.map((url) => url.id)
-  );
+  } = useFetch(getClicksCountForUrls, urlIds);
 
   useEffect(() => {
     fnUrls();
-  }, []);
+  }, [fnUrls, user.id]);
 
   const filteredUrls = urls?.filter((url) =>
     url.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   useEffect(() => {
-    if (urls?.length) fnClicks();
-  }, [urls?.length]);
+    if (urlIds?.length) fnClicks();
+  }, [fnClicks, urlIds]);
 
   return (
     <div className="flex flex-col gap-8 max-w-6xl mx-auto">
